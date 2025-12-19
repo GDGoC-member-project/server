@@ -1,0 +1,15 @@
+{
+  "name": "gdgoc-member-archive-frontend",
+  "version": "1.0.0",
+  "description": "GDG on Campus Member Archive - Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Add your dev script here'",
+    "build": "echo 'Add your build script here'",
+    "start": "echo 'Add your start script here'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
+
