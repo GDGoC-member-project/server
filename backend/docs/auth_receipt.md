@@ -1,365 +1,119 @@
-# 1. 목적/범위 (업데이트)
+## Auth / Account 담당 범위 정리 (현재 기준)
 
-## 1.1 목적
+### 1. 역할 정의
 
-* 공개 멤버 리스트/상세 조회 제공
-* Firebase Google 로그인 기반으로 “내 프로필”을 생성/수정(업서트) 제공
-* 내 프로필 조회 제공(수정 UX 지원)
-* 기수/파트 중심의 리스트 필터링 제공(아카이빙/탐색성 강화)
-
-## 1.2 범위(최소)
-
-### **Public**
-
-* 멤버 리스트 조회(필터 지원)
-* 멤버 상세 조회
-
-### **Protected**
-
-* 내 멤버 프로필 조회
-* 내 멤버 프로필 업서트(생성/수정 통합)
+Auth/Account 도메인의 책임은 **“사용자 인증과 계정 식별을 안정적으로 제공하는 것”**이며,
+실제 서비스 프로필 데이터(멤버 정보)는 다루지 않습니다.
 
 ---
 
-# 2. 아키텍처/정책 (변경 없음)
+### 2. 구현 완료 항목
 
-## 2.1 인증(Authentication)
+#### 2.1 인증 인프라
 
-* 클라이언트에서 Firebase Auth로 로그인 수행
-* 서버 요청 시 `Authorization: Bearer <Firebase ID Token>` 전송
-* 서버는 Firebase Admin SDK로 토큰 검증 후 `firebaseUid`를 획득
+* Firebase Auth 기반 인증 구조 확정
+* Firebase Admin SDK 초기화 완료
+* 클라이언트는 Firebase Google 로그인 후 **Firebase ID Token**을 발급받아 서버로 전달
+* 서버는 ID Token을 검증하여 `firebaseUid`를 획득
 
-## 2.2 인가(Authorization)
-
-* `/me/**` 는 로그인 필수
-* Public API(`/members/**`)는 누구나 접근 가능
-* “소유자 검사(owner check)”는 엔드포인트를 `/me/member`로 제한하여 제거(항상 본인 데이터만 변경)
-
-## 2.3 데이터 원칙
-
-* 사용자 식별은 `firebase_uid`를 단일 기준으로 사용
-* 링크/카드/스킬은 JSON 컬럼(또는 TEXT JSON)으로 저장(테이블 분해 생략)
-
----
-
-# 3. User Flow(행동 흐름) (업데이트)
-
-## 3.1 랜딩 → 멤버 리스트
-
-* 사용자: 랜딩에서 멤버 리스트로 이동
-* 서버: `GET /members` 호출로 리스트 조회
-* (선택 B) 사용자: 기수/파트 필터 선택 → `GET /members?generation=5&part=BE` 등으로 재조회
-
-## 3.2 로그인 → 프로필 등록/수정
-
-* 사용자: 구글 로그인(Firebase)
-* 클라이언트: Firebase ID Token 획득
-* 사용자: 프로필 등록/수정 페이지 진입 시 기존 데이터 로드
-* 서버: `GET /me/member` 호출(없으면 404 또는 빈 응답 처리)
-* 사용자: 저장
-* 서버: `PUT /me/member` 호출(없으면 생성, 있으면 수정)
-
-## 3.3 멤버 상세 조회
-
-* 사용자: 멤버 리스트에서 특정 멤버 선택
-* 서버: `GET /members/{publicId}` 호출
-
----
-
-# 4. API 명세(최소안) (업데이트)
-
-## 4.1 공통 규칙
-
-* Protected API 요청 헤더: `Authorization: Bearer <FIREBASE_ID_TOKEN>`
-* Content-Type: `application/json`
-* 응답 에러 포맷(공통):
-
-```json
-{
-  "code": "STRING_CODE",
-  "message": "Human readable message"
-}
-```
-
----
-
-## 4.2 멤버 리스트 조회 (Public)
-
-### `GET /members`
-
-**설명**
-
-* 멤버 리스트 페이지용 “요약 정보” 조회
-* (선택 B) 기수/파트 필터 지원
-
-**Query (선택)**
-
-* `generation`: 숫자 또는 문자열(예: `5`)
-* `part`: enum(예: `BE`, `FE`, `APP`, `DE`, `AI` 등 팀 기준)
-* `level`: enum(기존 유지)
-* `position`: enum(기존 유지)
-* `q`: 이름 검색(선택, 단순 contains; 정말 최소면 생략 가능)
-
-**Response 200**
-
-```json
-{
-  "items": [
-    {
-      "publicId": "uuid",
-      "name": "String",
-      "image": "https://... (optional)",
-      "generation": 5,
-      "part": "BE",
-      "level": "CORE",
-      "position": "BE"
-    }
-  ]
-}
-```
-
-**비고**
-
-* 성능을 위해 links/cards/about 등 상세 필드는 제외
-
----
-
-## 4.3 멤버 상세 조회 (Public)
-
-### `GET /members/{publicId}`
-
-**설명**
-
-* 멤버 공개 프로필 상세 조회
-
-**Path**
-
-* `publicId`: UUID
-
-**Response 200**
-
-```json
-{
-  "publicId": "uuid",
-  "name": "String",
-  "image": "https://... (optional)",
-  "bio": "optional",
-  "about": "optional",
-  "generation": 5,
-  "part": "BE",
-  "level": "CORE",
-  "position": "BE",
-  "skills": ["optional", "list"],
-  "links": [
-    { "icon": "GITHUB", "url": "https://..." }
-  ],
-  "cards": [
-    { "title": "String", "description": "optional", "url": "optional" }
-  ]
-}
-```
-
-**Response 404**
-
-```json
-{ "code": "MEMBER_NOT_FOUND", "message": "Member not found." }
-```
-
----
-
-## 4.4 내 멤버 프로필 조회 (Protected) ✅ 추가
-
-### `GET /me/member`
-
-**설명**
-
-* 로그인한 사용자의 “내 프로필” 조회(수정 화면 진입 시 사용)
-
-**인증**
-
-* 필요(Firebase ID Token)
-
-**Response 200**
-
-```json
-{
-  "publicId": "uuid",
-  "name": "String",
-  "image": "https://... (optional)",
-  "bio": "optional",
-  "about": "optional",
-  "generation": 5,
-  "part": "BE",
-  "level": "CORE",
-  "position": "BE",
-  "skills": ["optional", "list"],
-  "links": [
-    { "icon": "GITHUB", "url": "https://..." }
-  ],
-  "cards": [
-    { "title": "String", "description": "optional", "url": "optional" }
-  ]
-}
-```
-
-**Response 404**
-
-```json
-{ "code": "PROFILE_NOT_FOUND", "message": "Profile not found." }
-```
-
-**Response 401**
-
-```json
-{ "code": "UNAUTHORIZED", "message": "Invalid or missing token." }
-```
-
----
-
-## 4.5 내 멤버 프로필 업서트(생성/수정 통합) (Protected) (업데이트)
-
-### `PUT /me/member`
-
-**설명**
-
-* 로그인한 사용자의 멤버 프로필을 없으면 생성 / 있으면 수정(Upsert)
-* 단순화를 위해 전체 객체 전송(부분 PATCH 미지원)
-
-**인증**
-
-* 필요(Firebase ID Token)
-
-**Request**
-
-```json
-{
-  "name": "String",
-  "image": "https://... (optional)",
-  "bio": "optional",
-  "about": "optional",
-  "generation": 5,
-  "part": "BE",
-  "level": "CORE",
-  "position": "BE",
-  "skills": ["optional", "list"],
-  "links": [
-    { "icon": "GITHUB", "url": "https://..." }
-  ],
-  "cards": [
-    { "title": "String", "description": "optional", "url": "optional" }
-  ]
-}
-```
-
-**Response 200**
-
-```json
-{ "publicId": "uuid" }
-```
-
-**서버 처리 규칙**
-
-* 토큰 검증 후 `firebaseUid` 추출
-* `members.firebase_uid = firebaseUid`로 조회
-
-    * 없으면: 새 레코드 생성(`public_id` UUID 생성)
-    * 있으면: 입력값으로 덮어쓰기 업데이트
-* 필수: `name, generation, part` (그리고 기존 유지가 필요하면 `level, position`도 필수로 유지)
-
-**Response 400**
-
-```json
-{ "code": "VALIDATION_ERROR", "message": "name/generation/part is required." }
-```
-
-**Response 401**
-
-```json
-{ "code": "UNAUTHORIZED", "message": "Invalid or missing token." }
-```
-
----
-
-# 5. 데이터 스키마(최소) (업데이트)
-
-## 5.1 Enum 정의
-
-### Level
-
-* `ORG | CORE | NEW | ALU`
-
-### Position
-
-* `APP | FE | BE | DE | AI`
-
-### Part ✅ 추가(아카이빙/파트 분류용)
-
-* `APP | FE | BE | DE | AI | DESIGN | PM`
-
-    * 팀에서 쓰는 실제 파트명이 다르면 여기만 팀 기준으로 확정
-
-### Icon
-
-* `GITHUB | FIGMA | DRIBBBLE | INSTAGRAM | MAIL | LINK`
-
-## 5.2 members 테이블(서버 저장) (업데이트)
-
-* `id` (PK)
-* `public_id` (UUID, UNIQUE, NOT NULL)
-* `firebase_uid` (UNIQUE, NOT NULL)
-* `name` (NOT NULL)
-* `image` (NULL)
-* `bio` (NULL)
-* `about` (NULL)
-* `generation` (INT or VARCHAR, NOT NULL) ✅ 추가
-* `part` (VARCHAR, NOT NULL) ✅ 추가
-* `level` (NOT NULL)
-* `position` (NOT NULL)
-* `skills_json` (NULL)
-* `links_json` (NULL)
-* `cards_json` (NULL)
-* `created_at`, `updated_at` (NOT NULL)
-
-**인덱스**
-
-* UNIQUE(`firebase_uid`)
-* UNIQUE(`public_id`)
-* INDEX(`generation`, `part`) ✅ (선택 B 필터 성능용, 가볍게 추가)
-
----
-
-# 6. 미들웨어(최소) (업데이트)
-
-## 6.1 Firebase 인증 필터
+#### 2.2 인증 필터(`/me/**`)
 
 * 보호 경로: `/me/**`
-* 동작:
+* 인증 방식:
 
-    1. Authorization 헤더에서 Bearer 토큰 추출
-    2. Firebase Admin SDK로 토큰 검증
-    3. `firebaseUid`를 요청 컨텍스트에 저장
-    4. 실패 시 401 반환
+    * Header: `Authorization: Bearer <Firebase ID Token>`
+    * 토큰 검증 성공 시:
+
+        * 요청 컨텍스트에 `firebaseUid` 저장 (`request.setAttribute("firebaseUid", uid)`)
+    * 실패 시:
+
+        * HTTP 401
+        * 공통 에러 응답 포맷 반환
+
+#### 2.3 공통 에러 처리
+
+* 에러 응답 포맷 통일:
+
+  ```json
+  {
+    "code": "STRING_CODE",
+    "message": "Human readable message"
+  }
+  ```
+* 필터 단계(401):
+
+    * 인증 필터에서 직접 JSON 응답 반환
+* 컨트롤러 단계(400/401):
+
+    * `GlobalExceptionHandler`에서 공통 처리
+
+#### 2.4 테스트용 엔드포인트
+
+* `GET /me/ping`
+
+    * 목적: 인증 필터 동작 여부 확인
+    * 토큰 없음 → 401
+    * 토큰 있음 → 200 + `firebaseUid` 확인 가능
 
 ---
 
-# 7. 입력 검증(최소 규칙) (업데이트)
+### 3. Auth 도메인에서 **하지 않는 것**
 
-* `name`: 필수, 공백 불가
-* `generation`: 필수, 숫자/정해진 형식만 허용(최소안은 숫자 권장)
-* `part`: 필수, enum 값만 허용
-* `level`: 필수, enum 값만 허용
-* `position`: 필수, enum 값만 허용
-* `links[].icon`: enum 값만 허용
-* `cards[].title`: 카드가 있으면 title 필수
+아래 항목들은 **Auth/Account 범위를 벗어남**으로 명확히 제외합니다.
+
+* 멤버 프로필 CRUD (`members` 테이블)
+* 이름/기수/파트/스킬/링크 등 “서비스 프로필 데이터”
+* 공개 멤버 리스트/상세 조회 API
+* 마이페이지 프로필 UI용 데이터 제공 (`/me/member`)
+
+→ 위 항목들은 **Members/Profile 도메인 책임**
 
 ---
 
-# 9. 구현 체크리스트(최종) (업데이트)
+### 4. “마이페이지(Account)”에 대한 해석 (노션 기준)
 
-* [ ] Firebase Admin SDK 초기화(서비스 계정)
-* [ ] 인증 필터(`/me/**`)
-* [ ] `GET /members` (+ generation/part 필터 처리)
-* [ ] `GET /members/{publicId}`
-* [ ] `GET /me/member` ✅ 추가
-* [ ] `PUT /me/member` 업서트(+ generation/part 반영)
-* [ ] members 테이블 + UNIQUE 인덱스 2개 + (선택) INDEX(generation, part)
+노션에 정의된 **마이페이지**는 다음 의미로 해석됩니다.
+
+* 계정(Account) 기준 정보:
+
+    * `userId` (내부 식별자)
+    * `firebase_uid` (실제 인증 식별자)
+    * `email`
+    * `role`
+    * `password_hash` (Firebase 사용으로 **NULL 또는 미사용**)
+
+현재 단계에서는:
+
+* **계정 테이블(UserAuth) 생성 여부는 ‘회의 합의에 따라 가능성 열어둠’**
+* 실제 구현은 아직 착수하지 않음
+* 저장 트리거는 “첫 인증된 `/me/**` 요청 시 upsert”가 자연스러운 방향
+
+---
+
+### 5. Auth/Account 도메인 규약 (고정 사항)
+
+이 규약을 기준으로 다른 도메인이 Auth를 신뢰하고 사용합니다.
+
+1. 인증 헤더
+
+    * `Authorization: Bearer <Firebase ID Token>`
+
+2. 보호 경로
+
+    * `/me/**`
+
+3. 사용자 식별자 전달
+
+    * request attribute key: `"firebaseUid"`
+
+4. 에러 응답 포맷
+
+    * `{ code, message }`
+
+---
+
+### 6. 현재 상태 한 줄 요약
+
+> **Auth/Account 도메인은
+> Firebase 기반 인증 + `/me/**` 보호 + 공통 에러 처리까지 구현 완료 상태이며,
+> 계정(UserAuth) 저장은 회의 합의에 따라 다음 단계에서 최소 구현 예정인 상태입니다.**
