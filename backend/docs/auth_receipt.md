@@ -1,98 +1,172 @@
-## Auth / Account 담당 범위 정리 (현재 기준)
+# Auth / Account 담당 범위 정리 (최종 · 코드 반영본)
 
-### 1. 역할 정의
+## 1. 역할 정의
 
-Auth/Account 도메인의 책임은 **“사용자 인증과 계정 식별을 안정적으로 제공하는 것”**이며,
-실제 서비스 프로필 데이터(멤버 정보)는 다루지 않습니다.
+Auth/Account 도메인의 책임은 다음으로 한정합니다.
+
+* Firebase 기반 **사용자 인증**
+* 서버 내부에서 사용할 **계정(Account) 식별자 제공**
+* 다른 도메인이 신뢰할 수 있는 **인증·인가 규약 제공**
+
+멤버/프로필 데이터 관리 책임은 포함하지 않습니다.
 
 ---
 
-### 2. 구현 완료 항목
+## 2. 구현 완료 항목
 
-#### 2.1 인증 인프라
+### 2.1 인증 인프라
 
-* Firebase Auth 기반 인증 구조 확정
-* Firebase Admin SDK 초기화 완료
-* 클라이언트는 Firebase Google 로그인 후 **Firebase ID Token**을 발급받아 서버로 전달
-* 서버는 ID Token을 검증하여 `firebaseUid`를 획득
+* Firebase Auth + Firebase Admin SDK 기반 인증 구조 확정
+* 서버에서 Firebase ID Token 검증
+* 검증 결과로 다음 정보 추출
 
-#### 2.2 인증 필터(`/me/**`)
+    * `firebaseUid`
+    * `email` (존재 시)
+
+---
+
+### 2.2 인증 필터 (`/me/**`)
 
 * 보호 경로: `/me/**`
-* 인증 방식:
 
-    * Header: `Authorization: Bearer <Firebase ID Token>`
-    * 토큰 검증 성공 시:
+* 요청 헤더:
 
-        * 요청 컨텍스트에 `firebaseUid` 저장 (`request.setAttribute("firebaseUid", uid)`)
-    * 실패 시:
+    * `Authorization: Bearer <Firebase ID Token>`
 
-        * HTTP 401
-        * 공통 에러 응답 포맷 반환
+* 성공 시:
 
-#### 2.3 공통 에러 처리
+    * request attribute에 다음 값 저장
 
-* 에러 응답 포맷 통일:
+        * `firebaseUid`
+        * `firebaseEmail`
 
-  ```json
-  {
-    "code": "STRING_CODE",
-    "message": "Human readable message"
-  }
-  ```
-* 필터 단계(401):
+* 실패 시:
 
-    * 인증 필터에서 직접 JSON 응답 반환
-* 컨트롤러 단계(400/401):
+    * HTTP 401
+    * 공통 에러 응답 포맷 반환
 
-    * `GlobalExceptionHandler`에서 공통 처리
+```json
+{
+  "code": "UNAUTHORIZED",
+  "message": "Invalid or missing token."
+}
+```
 
-#### 2.4 테스트용 엔드포인트
+---
+
+### 2.3 공통 에러 처리
+
+* 에러 응답 포맷 통일
+
+```json
+{
+  "code": "STRING_CODE",
+  "message": "Human readable message"
+}
+```
+
+* 처리 규칙:
+
+    * 인증 실패 → 401 (`UNAUTHORIZED`)
+    * 요청 검증 오류 → 400 (`VALIDATION_ERROR`)
+    * 서버 내부 상태 오류 → 500 (`INTERNAL_ERROR`)
+
+* 처리 위치:
+
+    * 필터 단계 401: 인증 필터에서 직접 처리
+    * 컨트롤러/서비스 단계: `GlobalExceptionHandler`에서 처리
+
+---
+
+### 2.4 테스트 엔드포인트
 
 * `GET /me/ping`
 
-    * 목적: 인증 필터 동작 여부 확인
+    * 목적: 인증 필터 및 토큰 검증 확인
     * 토큰 없음 → 401
-    * 토큰 있음 → 200 + `firebaseUid` 확인 가능
+    * 토큰 유효 → 200 + `firebaseUid`, `firebaseEmail` 확인
 
 ---
 
-### 3. Auth 도메인에서 **하지 않는 것**
+## 3. Auth/Account 도메인에서 하지 않는 것
 
-아래 항목들은 **Auth/Account 범위를 벗어남**으로 명확히 제외합니다.
-
-* 멤버 프로필 CRUD (`members` 테이블)
-* 이름/기수/파트/스킬/링크 등 “서비스 프로필 데이터”
+* 멤버 프로필 CRUD (`members`)
+* 이름, 기수, 파트, 스킬, 링크 등 서비스 프로필 데이터
 * 공개 멤버 리스트/상세 조회 API
-* 마이페이지 프로필 UI용 데이터 제공 (`/me/member`)
-
-→ 위 항목들은 **Members/Profile 도메인 책임**
+* `/me/member` 등 프로필 수정·조회 API
 
 ---
 
-### 4. “마이페이지(Account)”에 대한 해석 (노션 기준)
+## 4. Account(UserAuth) 구현 상태
 
-노션에 정의된 **마이페이지**는 다음 의미로 해석됩니다.
+Account는 **인증과 내부 식별을 위한 최소 정보만 관리**합니다.
 
-* 계정(Account) 기준 정보:
+### 4.1 관리 필드
 
-    * `userId` (내부 식별자)
-    * `firebase_uid` (실제 인증 식별자)
-    * `email`
-    * `role`
-    * `password_hash` (Firebase 사용으로 **NULL 또는 미사용**)
-
-현재 단계에서는:
-
-* **계정 테이블(UserAuth) 생성 여부는 ‘회의 합의에 따라 가능성 열어둠’**
-* 실제 구현은 아직 착수하지 않음
-* 저장 트리거는 “첫 인증된 `/me/**` 요청 시 upsert”가 자연스러운 방향
+* `userId` (내부 식별자, UUID)
+* `firebaseUid` (Firebase 인증 식별자)
+* `email`
+* `role`
+* `passwordHash` (Firebase 사용으로 NULL/미사용)
+* `createdAt`
+* `updatedAt`
 
 ---
 
-### 5. Auth/Account 도메인 규약 (고정 사항)
+### 4.2 저장소 및 저장 방식
 
-이 규약을 기준으로 다른 도메인이 Auth를 신뢰하고 사용합니다.
+* 저장소: **Cloud Firestore**
+* 컬렉션: `user_auth`
+* 문서 ID: `firebaseUid`
+
+저장 전략: **get-or-create(upsert)**
+
+* 첫 인증된 `/me/**` 요청 시:
+
+    * 문서가 없으면 생성
+    * 있으면 기존 문서 반환
+
+* 기존 문서에 email이 없고,
+  토큰에 email이 존재하면 email 보정 업데이트 수행
+
+> 문서 상의 `firebase_uid`, `password_hash` 표기는 **개념적 표현**이며,
+> 실제 구현에서는 camelCase 필드명을 사용한다.
+
+---
+
+### 4.3 Account 조회 API
+
+#### `GET /me/account`
+
+설명:
+
+* 인증된 사용자의 Account(UserAuth) 정보를 조회한다.
+* 첫 요청 시 Account가 없으면 get-or-create 방식으로 생성된다.
+
+인증:
+
+* 필요 (`Authorization: Bearer <Firebase ID Token>`)
+
+Response 200:
+
+```json
+{
+  "userId": "uuid",
+  "firebaseUid": "string",
+  "email": "string | null",
+  "role": "USER"
+}
+```
+
+비고:
+
+* `passwordHash`는 응답에 포함하지 않는다.
+
+---
+
+## 5. Auth/Account 고정 규약 (머지 기준)
+
+다른 도메인이 의존하는 **고정 계약**입니다.
 
 1. 인증 헤더
 
@@ -102,18 +176,25 @@ Auth/Account 도메인의 책임은 **“사용자 인증과 계정 식별을 �
 
     * `/me/**`
 
-3. 사용자 식별자 전달
+3. 사용자 식별자 전달 방식
 
-    * request attribute key: `"firebaseUid"`
+    * request attribute:
 
-4. 에러 응답 포맷
+        * `"firebaseUid"`
+        * `"firebaseEmail"`
+
+4. 계정 저장 규약
+
+    * Firestore `user_auth/{firebaseUid}`
+
+5. 에러 응답 포맷
 
     * `{ code, message }`
 
 ---
 
-### 6. 현재 상태 한 줄 요약
+## 6. 현재 상태 요약
 
 > **Auth/Account 도메인은
-> Firebase 기반 인증 + `/me/**` 보호 + 공통 에러 처리까지 구현 완료 상태이며,
-> 계정(UserAuth) 저장은 회의 합의에 따라 다음 단계에서 최소 구현 예정인 상태입니다.**
+> Firebase 인증 인프라, `/me/**` 보호, 공통 에러 처리,
+> Account(UserAuth) get-or-create 저장 및 조회까지 구현 완료 상태입니다.**
