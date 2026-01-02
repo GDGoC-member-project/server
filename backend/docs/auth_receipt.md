@@ -1,200 +1,212 @@
-# Auth / Account 담당 범위 정리 (최종 · 코드 반영본)
+# Auth / Account 도메인 정리 (코드 기준 최소 문서)
 
-## 1. 역할 정의
+## 1. 역할 범위
 
-Auth/Account 도메인의 책임은 다음으로 한정합니다.
+Auth/Account 도메인은 다음 책임만 가진다.
 
-* Firebase 기반 **사용자 인증**
-* 서버 내부에서 사용할 **계정(Account) 식별자 제공**
-* 다른 도메인이 신뢰할 수 있는 **인증·인가 규약 제공**
-
-멤버/프로필 데이터 관리 책임은 포함하지 않습니다.
+- Firebase ID Token 검증을 통한 **사용자 인증**
+- 내부에서 사용하는 Account(UserAuth) **식별자(userId) 발급 및 조회**
+- 다른 도메인이 신뢰할 수 있는 **인증/계정 규약 제공**
 
 ---
 
-## 2. 구현 완료 항목
+## 2. 인증 필터 및 보호 경로
 
-### 2.1 인증 인프라
+### 2.1 보호 경로
 
-* Firebase Auth + Firebase Admin SDK 기반 인증 구조 확정
-* 서버에서 Firebase ID Token 검증
-* 검증 결과로 다음 정보 추출
+- 보호 대상: `/api/v1/me/**`
 
-    * `firebaseUid`
-    * `email` (존재 시)
+### 2.2 Firebase 인증
 
----
+- 클라이언트는 Firebase에서 발급한 ID Token 을 헤더로 전송한다.
+- 요청 헤더:
 
-### 2.2 인증 필터 (`/me/**`)
+  ```text
+  Authorization: Bearer <Firebase ID Token>
+  ```
 
-* 보호 경로: `/me/**`
+- 필터는 토큰을 검증한 뒤, 성공 시 다음 request attribute 를 설정한다.
 
-* 요청 헤더:
+  - `firebaseUid`
+  - `firebaseEmail` (nullable)
 
-    * `Authorization: Bearer <Firebase ID Token>`
+### 2.3 로컬/디버그 모드
 
-* 성공 시:
+- 설정값 `auth.firebase.enabled=false` 인 경우, Firebase 검증을 우회하고 디버그 헤더를 사용한다.
+- 디버그 헤더:
 
-    * request attribute에 다음 값 저장
+  - `X-Debug-Firebase-Uid`
+  - `X-Debug-Firebase-Email`
 
-        * `firebaseUid`
-        * `firebaseEmail`
+- 값이 없으면 `firebaseUid = "debug-uid"`, `firebaseEmail = null` 로 간주하고 필터를 통과시킨다.
 
-* 실패 시:
+### 2.4 인증 실패 응답
 
-    * HTTP 401
-    * 공통 에러 응답 포맷 반환
+- 토큰 없음/형식 오류/검증 실패 시 필터에서 바로 401 응답을 내린다.
+- 응답 포맷은 `BaseResponse<Void>` ERROR 형태로 고정된다.
 
 ```json
 {
-  "code": "UNAUTHORIZED",
-  "message": "Invalid or missing token."
+  "status": "ERROR",
+  "data": null,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Invalid or missing token.",
+    "details": null
+  }
 }
 ```
 
 ---
 
-### 2.3 공통 에러 처리
+## 3. Account(UserAuth) 저장 구조
 
-* 에러 응답 포맷 통일
+### 3.1 저장소 및 테이블
+
+- 저장소: **MySQL (InnoDB)**
+- 테이블: `gdgoc_archive.user_auth`
+
+주요 컬럼 :
+
+- `user_id` CHAR(36) PK — 서비스 내부 식별자 (UUID)
+- `firebase_uid` VARCHAR(128) UNIQUE NOT NULL
+- `email` VARCHAR(255) NULL
+- `password_hash` VARCHAR(255) NULL (Firebase 사용으로 실질적으로 미사용)
+- `role` VARCHAR(50) NOT NULL — Enum(Role) 값 (`LEAD` | `CORE` | `MEMBER`)을 문자열로 저장
+
+엔티티 클래스: `com.gdgoc.archive.account.UserAuth`
+
+```java
+@Column(name = "role", length = 50, nullable = false)
+@Enumerated(EnumType.STRING)
+private Role role; // LEAD, CORE, MEMBER
+```
+
+### 3.2 저장 전략 (get-or-create)
+
+- 첫 `/api/v1/me/account` 호출 시:
+  - 해당 `firebase_uid` 로 row 가 없으면:
+    - 새로운 `user_id` (UUID) 발급
+    - `role = MEMBER` 기본값으로 row 생성
+  - row 가 이미 있으면:
+    - 기존 row 를 그대로 사용
+- 기존 row 에 `email` 이 없고, 토큰에 email 이 있다면:
+  - email 값을 보정 UPDATE 한다.
+
+구현 클래스: `com.gdgoc.archive.account.AccountService#getOrCreate(String firebaseUid, String email)`
+
+---
+
+## 4. 공개 API 스펙
+
+### 4.1 공통 응답 스키마 (BaseResponse<T>)
+
+모든 API 응답은 `BaseResponse<T>` 로 래핑된다.
 
 ```json
 {
-  "code": "STRING_CODE",
-  "message": "Human readable message"
+  "status": "SUCCESS" | "ERROR",
+  "data": {},
+  "error": {
+    "code": "STRING",
+    "message": "STRING",
+    "details": {}
+  }
 }
 ```
 
-* 처리 규칙:
+- 성공 시: `status = "SUCCESS"`, `data = <payload>`, `error = null`
+- 실패 시: `status = "ERROR"`, `data = null`, `error` 에 상세 정보
 
-    * 인증 실패 → 401 (`UNAUTHORIZED`)
-    * 요청 검증 오류 → 400 (`VALIDATION_ERROR`)
-    * 서버 내부 상태 오류 → 500 (`INTERNAL_ERROR`)
+### 4.2 `GET /api/v1/me/ping`
 
-* 처리 위치:
+- 컨트롤러: `com.gdgoc.archive.auth.AuthTestController`
+- 목적: 인증 필터 및 Firebase 토큰 검증/디버그 헤더 동작 확인
+- 인증:
+  - prod: `Authorization: Bearer <ID_TOKEN>` 필요
+  - local(dev): `auth.firebase.enabled=false` 이면 디버그 헤더로 대체 가능
 
-    * 필터 단계 401: 인증 필터에서 직접 처리
-    * 컨트롤러/서비스 단계: `GlobalExceptionHandler`에서 처리
-
----
-
-### 2.4 테스트 엔드포인트
-
-* `GET /me/ping`
-
-    * 목적: 인증 필터 및 토큰 검증 확인
-    * 토큰 없음 → 401
-    * 토큰 유효 → 200 + `firebaseUid`, `firebaseEmail` 확인
-
----
-
-## 3. Auth/Account 도메인에서 하지 않는 것
-
-* 멤버 프로필 CRUD (`members`)
-* 이름, 기수, 파트, 스킬, 링크 등 서비스 프로필 데이터
-* 공개 멤버 리스트/상세 조회 API
-* `/me/member` 등 프로필 수정·조회 API
-
----
-
-## 4. Account(UserAuth) 구현 상태
-
-Account는 **인증과 내부 식별을 위한 최소 정보만 관리**합니다.
-
-### 4.1 관리 필드
-
-* `userId` (내부 식별자, UUID)
-* `firebaseUid` (Firebase 인증 식별자)
-* `email`
-* `role`
-* `passwordHash` (Firebase 사용으로 NULL/미사용)
-* `createdAt`
-* `updatedAt`
-
----
-
-### 4.2 저장소 및 저장 방식
-
-* 저장소: **Cloud Firestore**
-* 컬렉션: `user_auth`
-* 문서 ID: `firebaseUid`
-
-저장 전략: **get-or-create(upsert)**
-
-* 첫 인증된 `/me/**` 요청 시:
-
-    * 문서가 없으면 생성
-    * 있으면 기존 문서 반환
-
-* 기존 문서에 email이 없고,
-  토큰에 email이 존재하면 email 보정 업데이트 수행
-
-> 문서 상의 `firebase_uid`, `password_hash` 표기는 **개념적 표현**이며,
-> 실제 구현에서는 camelCase 필드명을 사용한다.
-
----
-
-### 4.3 Account 조회 API
-
-#### `GET /me/account`
-
-설명:
-
-* 인증된 사용자의 Account(UserAuth) 정보를 조회한다.
-* 첫 요청 시 Account가 없으면 get-or-create 방식으로 생성된다.
-
-인증:
-
-* 필요 (`Authorization: Bearer <Firebase ID Token>`)
-
-Response 200:
+성공 응답 (BaseResponse<PingResponse>):
 
 ```json
 {
-  "userId": "uuid",
-  "firebaseUid": "string",
-  "email": "string | null",
-  "role": "USER"
+  "status": "SUCCESS",
+  "data": {
+    "ok": true,
+    "firebaseUid": "firebase-uid",
+    "email": "user@example.com"
+  },
+  "error": null
+}
+```
+
+### 4.3 `GET /api/v1/me/account`
+
+- 컨트롤러: `com.gdgoc.archive.account.AccountController`
+- 서비스: `AccountService#getOrCreate(firebaseUid, email)`
+- 설명:
+  - 인증된 사용자의 Account(UserAuth) 정보를 조회한다.
+  - 첫 요청 시 해당 `firebase_uid` row 가 없으면 get-or-create 방식으로 생성한다.
+- 인증:
+  - prod: `Authorization: Bearer <ID_TOKEN>` 필요
+  - local(dev): `auth.firebase.enabled=false` 일 때 디버그 헤더 사용 가능
+
+성공 응답 (BaseResponse<AccountResponse>):
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "userId": "uuid",
+    "firebaseUid": "firebase-uid",
+    "email": "string | null",
+    "role": "MEMBER"
+  },
+  "error": null
 }
 ```
 
 비고:
 
-* `passwordHash`는 응답에 포함하지 않는다.
+- `role` 값은 Enum(Role) 기준 `LEAD` | `CORE` | `MEMBER` 중 하나이며,
+  신규 생성 시 기본값은 `"MEMBER"` 이다.
+- `passwordHash` 는 응답에 포함되지 않는다.
 
 ---
 
-## 5. Auth/Account 고정 규약 (머지 기준)
-
-다른 도메인이 의존하는 **고정 계약**입니다.
+## 5. 고정 규약 (다른 도메인에서 의존 가능한 부분)
 
 1. 인증 헤더
 
-    * `Authorization: Bearer <Firebase ID Token>`
+   - `Authorization: Bearer <Firebase ID Token>`
 
 2. 보호 경로
 
-    * `/me/**`
+   - `/api/v1/me/**`
 
 3. 사용자 식별자 전달 방식
 
-    * request attribute:
-
-        * `"firebaseUid"`
-        * `"firebaseEmail"`
+   - request attribute:
+     - `"firebaseUid"`
+     - `"firebaseEmail"`
 
 4. 계정 저장 규약
 
-    * Firestore `user_auth/{firebaseUid}`
+   - MySQL `user_auth` 테이블 row (`user_id`, `firebase_uid` 기반)
 
 5. 에러 응답 포맷
 
-    * `{ code, message }`
+   - BaseResponse ERROR:
 
----
+   ```json
+   {
+     "status": "ERROR",
+     "data": null,
+     "error": {
+       "code": "STRING",
+       "message": "Human readable message",
+       "details": {}
+     }
+   }
+   ```
 
-## 6. 현재 상태 요약
-
-> **Auth/Account 도메인은
-> Firebase 인증 인프라, `/me/**` 보호, 공통 에러 처리,
-> Account(UserAuth) get-or-create 저장 및 조회까지 구현 완료 상태입니다.**
