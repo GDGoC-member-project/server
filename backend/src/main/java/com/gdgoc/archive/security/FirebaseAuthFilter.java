@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,6 +21,9 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
     private final FirebaseTokenVerifier verifier;
 
+    @Value("${auth.firebase.enabled:true}")
+    private boolean authEnabled;
+
     public FirebaseAuthFilter(FirebaseTokenVerifier verifier) {
         this.verifier = verifier;
     }
@@ -27,8 +31,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // Protect only /me/** (public APIs remain open)
-        return !path.startsWith("/me/");
+        return !path.startsWith("/api/v1/me/");
     }
 
     @Override
@@ -37,6 +40,18 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+
+        // ✅ local/dev test bypass (no Firebase ID token)
+        if (!authEnabled) {
+            String uid = request.getHeader("X-Debug-Firebase-Uid");
+            String email = request.getHeader("X-Debug-Firebase-Email");
+
+            request.setAttribute(ATTR_FIREBASE_UID, (uid == null || uid.isBlank()) ? "debug-uid" : uid);
+            request.setAttribute(ATTR_FIREBASE_EMAIL, (email == null || email.isBlank()) ? null : email);
+
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || authHeader.isBlank() || !authHeader.startsWith("Bearer ")) {
@@ -53,13 +68,11 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         try {
             FirebaseVerifiedUser verified = verifier.verify(token);
 
-            // set request attributes for downstream controllers/services
             request.setAttribute(ATTR_FIREBASE_UID, verified.uid());
             request.setAttribute(ATTR_FIREBASE_EMAIL, verified.email());
 
             filterChain.doFilter(request, response);
         } catch (Exception e) {
-            // e.printStackTrace();
             writeUnauthorized(response);
         }
     }
@@ -68,6 +81,11 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setCharacterEncoding("UTF-8");
         response.setContentType("application/json");
-        response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid or missing token.\"}");
+
+        // BaseResponse<Void> ERROR 형태로 고정
+        response.getWriter().write(
+                "{\"status\":\"ERROR\",\"data\":null," +
+                        "\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Invalid or missing token.\",\"details\":null}}"
+        );
     }
 }
