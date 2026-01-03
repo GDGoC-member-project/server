@@ -1,5 +1,31 @@
 spring:
   application:
     name: member
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: YOUR_GOOGLE_CLIENT_ID
+            client-secret: YOUR_GOOGLE_CLIENT_SECRET
+            scope:
+              - email
+              - profile
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/gdg_post?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8
+    username: root
+    password: js11020353
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    jpa:
+      hibernate:
+        ddl-auto: update
+      properties:
+        hibernate:
+          format_sql: true
+          show_sql: true
+
 server:
-  port: 8080 # 애플리케이션 서버 포트 설정
+  port: 8080
