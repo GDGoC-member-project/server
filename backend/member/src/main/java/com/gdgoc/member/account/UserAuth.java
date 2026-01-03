@@ -7,7 +7,7 @@ import jakarta.persistence.*;
         name = "user_auth",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_user_auth_email", columnNames = "email"),
-                @UniqueConstraint(name = "uk_user_auth_firebase_uid", columnNames = "firebase_uid")
+                @UniqueConstraint(name = "uk_user_auth_external_uid", columnNames = "external_uid")
         }
 )
 public class UserAuth {
@@ -16,7 +16,7 @@ public class UserAuth {
     @Column(name = "user_id", nullable = false, columnDefinition = "CHAR(36)")
     private String userId;
 
-    @Column(name = "firebase_uid", length = 128, nullable = false)
+    @Column(name = "external_uid", length = 128, nullable = false)
     private String externalUid;
 
     @Column(name = "email", length = 255) // nullable 허용 권장
