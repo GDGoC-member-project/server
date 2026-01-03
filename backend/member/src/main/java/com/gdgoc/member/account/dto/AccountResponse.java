@@ -2,7 +2,7 @@ package com.gdgoc.member.account.dto;
 
 public record AccountResponse(
         String userId,
-        String firebaseUid,
+        String externalUid,
         String email,
         String role
 ) {}

@@ -2,6 +2,6 @@ package com.gdgoc.member.auth.dto;
 
 public record PingResponse(
         boolean ok,
-        String firebaseUid,
+        String externalUid,
         String email
 ) {}

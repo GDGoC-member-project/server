@@ -18,7 +18,7 @@ public class AccountService {
 
     @Transactional
     public UserAuth getOrCreate(String externalUid, String email) {
-        return repo.findByFirebaseUid(externalUid)
+        return repo.findByExternalUid(externalUid)
                 .map(existing -> {
                     if ((existing.getEmail() == null || existing.getEmail().isBlank())
                             && email != null && !email.isBlank()) {
@@ -37,7 +37,7 @@ public class AccountService {
                     try {
                         return repo.save(created);
                     } catch (DataIntegrityViolationException e) {
-                        return repo.findByFirebaseUid(externalUid)
+                        return repo.findByExternalUid(externalUid)
                                 .orElseThrow(() -> new IllegalStateException("USER_AUTH_RACE_CONDITION", e));
                     }
                 });
