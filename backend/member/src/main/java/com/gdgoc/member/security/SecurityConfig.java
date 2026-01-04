@@ -30,7 +30,6 @@ public class SecurityConfig {
                                     "Invalid or missing token.",
                                     null
                             );
-
                             try {
                                 new ObjectMapper().writeValue(response.getWriter(), body);
                             } catch (Exception ex) {
