@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
-
+import java.util.UUID;
 
 
 @Service
@@ -36,7 +36,8 @@ public class ProfileService {
     @Transactional
     public ProfileResponse create(ProfileRequest req) {
         CurrentUser user = currentUserService.requireUser();
-        String userId = user.userId();
+        
+        UUID userId = user.userId();
 
         if (profileRepository.existsByUserId(userId)) {
             throw new ApiException(ErrorCode.DUPLICATE_USER_ID);
@@ -65,7 +66,7 @@ public class ProfileService {
 
     @Transactional(readOnly = true)
     public ProfileResponse get() {
-        String userId = currentUserService.requireUser().userId();
+        UUID userId = currentUserService.requireUser().userId();
 
         Profile profile = profileRepository.findByUserId(userId)
             .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND));
@@ -75,7 +76,7 @@ public class ProfileService {
 
     @Transactional
     public ProfileResponse update(ProfileRequest req) {
-        String userId = currentUserService.requireUser().userId();
+        UUID userId = currentUserService.requireUser().userId();
 
         Profile profile = profileRepository.findByUserId(userId)
             .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND));
@@ -118,7 +119,7 @@ public class ProfileService {
     }
 
     @Transactional(readOnly = true)
-    public ProfileResponse getByUserId(String userId) {
+    public ProfileResponse getByUserId(UUID userId) {
         Profile profile = profileRepository.findByUserId(userId)
             .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND));
 

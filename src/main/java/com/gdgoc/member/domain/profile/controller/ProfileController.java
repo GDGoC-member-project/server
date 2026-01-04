@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/profiles")
@@ -60,7 +61,7 @@ public class ProfileController {
     }
 
     @GetMapping("/{userId}")
-    public BaseResponse<ProfileResponse> getProfileDetail(@PathVariable String userId) {
+    public BaseResponse<ProfileResponse> getProfileDetail(@PathVariable UUID userId) {
         return BaseResponse.success(profileService.getByUserId(userId));
     }
 

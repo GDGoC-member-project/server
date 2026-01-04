@@ -1,5 +1,7 @@
 package com.gdgoc.member.domain.profile.dto.response;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gdgoc.member.domain.profile.type.Part;
 import com.gdgoc.member.domain.profile.type.Role;
@@ -8,7 +10,7 @@ import com.gdgoc.member.domain.profile.type.Role;
 public class ProfileSummaryResponse {
 
     @JsonProperty("user_id")
-    private final String userId;
+    private final UUID userId;
 
     private final String name;
     private final Integer generation;
@@ -20,7 +22,7 @@ public class ProfileSummaryResponse {
     @JsonProperty("profile_image_url")
     private final String profileImageUrl;
 
-    public ProfileSummaryResponse(String userId, String name, Integer generation, Part part, Role role,
+    public ProfileSummaryResponse(UUID userId, String name, Integer generation, Part part, Role role,
                                   String department, String bio, String profileImageUrl) {
         this.userId = userId;
         this.name = name;
@@ -32,7 +34,7 @@ public class ProfileSummaryResponse {
         this.profileImageUrl = profileImageUrl;
     }
 
-    public String getUserId() { return userId.toString(); }
+    public UUID getUserId() { return userId; }
     public String getName() { return name; }
     public Integer getGeneration() { return generation; }
     public Part getPart() { return part; }

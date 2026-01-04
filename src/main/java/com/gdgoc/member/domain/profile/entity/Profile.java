@@ -26,7 +26,7 @@ public class Profile {
     private Long id;
 
     @Column(name = "user_id", nullable = false, unique = true, length = 36)
-    private String userId;
+    private UUID userId;
 
     @Column(nullable = false, length = 50)
     private String name;
@@ -69,10 +69,10 @@ public class Profile {
 
     protected Profile() {}
 
-    public Profile(String userId, String name, Integer generation, Part part, Role role,
+    public Profile(UUID userId, String name, Integer generation, Part part, Role role,
                    String department, String bio, String mbtiInfo, String profileImageUrl,
                    String techStacksJson, String socialLinksJson) {
-        this.userId = userId.toString();
+        this.userId = userId;
         this.name = name;
         this.generation = generation;
         this.part = part;
@@ -101,7 +101,7 @@ public class Profile {
     }
 
     public Long getId() { return id; }
-    public String getUserId() { return userId; }
+    public UUID getUserId() { return userId; }
     public String getName() { return name; }
     public Integer getGeneration() { return generation; }
     public Part getPart() { return part; }

@@ -1,9 +1,11 @@
 package com.gdgoc.member.security;
 
+import java.util.UUID;
+
 import com.gdgoc.member.account.Role;
 
 public record CurrentUser(
-        String userId,
+        UUID userId,
         String subject,
         String externalUid,
         String email,

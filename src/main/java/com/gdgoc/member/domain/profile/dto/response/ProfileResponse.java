@@ -6,11 +6,12 @@ import com.gdgoc.member.domain.profile.type.Role;
 import com.gdgoc.member.domain.profile.type.SocialLink;
 
 import java.util.List;
+import java.util.UUID;
 
 public class ProfileResponse {
 
     @JsonProperty("user_id")
-    private final String userId;
+    private final UUID userId;
 
     private final String name;
     private final Integer generation;
@@ -31,7 +32,7 @@ public class ProfileResponse {
     @JsonProperty("social_links")
     private final List<SocialLink> socialLinks;
 
-    public ProfileResponse(String userId, String name, Integer generation, Part part, Role role,
+    public ProfileResponse(UUID userId, String name, Integer generation, Part part, Role role,
                            String department, String bio, String mbtiInfo, String profileImageUrl,
                            List<String> techStacks, List<SocialLink> socialLinks) {
         this.userId = userId;
@@ -47,7 +48,7 @@ public class ProfileResponse {
         this.socialLinks = socialLinks;
     }
 
-    public String getUserId() { return userId.toString(); }
+    public UUID getUserId() { return userId; }
     public String getName() { return name; }
     public Integer getGeneration() { return generation; }
     public Part getPart() { return part; }
