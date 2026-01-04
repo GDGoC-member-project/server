@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: member
+server:
+  port: 8080 # 애플리케이션 서버 포트 설정
