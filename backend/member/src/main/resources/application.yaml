@@ -2,6 +2,9 @@ spring:
   application:
     name: member
 
+  config:
+    import: "optional:file:.env[.properties]"
+
   security:
     oauth2:
       client:
