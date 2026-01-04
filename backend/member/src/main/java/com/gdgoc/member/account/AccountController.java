@@ -32,4 +32,3 @@ public class AccountController {
         return BaseResponse.success(payload);
     }
 }
-

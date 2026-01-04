@@ -28,7 +28,7 @@ public class AccountService {
                 })
                 .orElseGet(() -> {
                     UserAuth created = new UserAuth(
-                            UUID.randomUUID().toString(),
+                            UUID.randomUUID(),
                             externalUid,
                             email,
                             null,

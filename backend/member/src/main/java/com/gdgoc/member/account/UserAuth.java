@@ -1,6 +1,10 @@
 package com.gdgoc.member.account;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -14,7 +18,8 @@ public class UserAuth {
 
     @Id
     @Column(name = "user_id", nullable = false, columnDefinition = "CHAR(36)")
-    private String userId;
+    @JdbcTypeCode(SqlTypes.CHAR)
+    private UUID userId;
 
     @Column(name = "external_uid", length = 128, nullable = false)
     private String externalUid;
@@ -31,7 +36,7 @@ public class UserAuth {
 
     protected UserAuth() { }
 
-    public UserAuth(String userId, String externalUid, String email, String passwordHash, Role role) {
+    public UserAuth(UUID userId, String externalUid, String email, String passwordHash, Role role) {
         this.userId = userId;
         this.externalUid = externalUid;
         this.email = email;
@@ -39,7 +44,7 @@ public class UserAuth {
         this.role = role;
     }
 
-    public String getUserId() { return userId; }
+    public UUID getUserId() { return userId; }
     public String getExternalUid() { return externalUid; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
