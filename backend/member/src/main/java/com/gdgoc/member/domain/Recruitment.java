@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class Recruitment {
 
     @Column(name = "position", nullable = false)
-    private String position;      // 모집 파트 (optional)
+    private String position;      // 모집 파트(optional)
 
     @Column(name = "recruitment_description", nullable = false)
     private String description;   // 파트 담당 업무 설명 (optional)

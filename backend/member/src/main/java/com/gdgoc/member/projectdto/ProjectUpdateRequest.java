@@ -1,11 +1,10 @@
-package com.gdgoc.member.dto;
+package com.gdgoc.member.projectdto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public record ProjectUpdateRequest(

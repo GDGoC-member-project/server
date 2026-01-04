@@ -1,19 +1,20 @@
-package com.gdgoc.member.dto;
+package com.gdgoc.member.projectdto;
 
 import com.gdgoc.member.domain.Project;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 
 public record ProjectResponse(
-        String projectId,
+        UUID projectId,
         String title,
         String description,
         String externalUrl,
         String content,
-        List<com.gdgoc.member.dto.RecruitmentResponse> recruitments,
+        List<com.gdgoc.member.projectdto.RecruitmentResponse> recruitments,
         LocalDate deadline,
         LocalDateTime postDate
 

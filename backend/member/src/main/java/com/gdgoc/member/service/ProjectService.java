@@ -2,17 +2,16 @@ package com.gdgoc.member.service;
 
 import com.gdgoc.member.domain.Project;
 import com.gdgoc.member.domain.Recruitment;
-import com.gdgoc.member.dto.*;
+import com.gdgoc.member.projectdto.*;
 import com.gdgoc.member.repository.ProjectRepository;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-@Getter
 @Service
 @RequiredArgsConstructor
 public class ProjectService {
@@ -20,7 +19,7 @@ public class ProjectService {
 
 
     @Transactional
-    public void createProject(String ownerId, ProjectRequest requestDto) {
+    public UUID createProject(UUID ownerId, ProjectRequest requestDto) {
 
         List<Recruitment> recruitments = requestDto.recruitments() == null
                 ? new ArrayList<>()
@@ -42,12 +41,12 @@ public class ProjectService {
                 requestDto.content(),
                 requestDto.deadline()
         );
-        projectRepository.save(project);
-
+        Project saved = projectRepository.save(project);
+        return saved.getProjectId();
     }
 
     @Transactional(readOnly = true)
-    public ProjectResponse getProjectById(String projectId) {
+    public ProjectResponse getProjectById(UUID projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("ID에 해당하는 프로젝트를 찾을 수 없습니다: " + projectId));
 
@@ -62,7 +61,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public void updateProject(String ownerId, String projectId, ProjectUpdateRequest requestDto) {
+    public void updateProject(UUID ownerId, UUID projectId, ProjectUpdateRequest requestDto) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("ID에 해당하는 프로젝트를 찾을 수 없습니다: " + projectId));
 
@@ -84,7 +83,6 @@ public class ProjectService {
                     .toList();
         }
 
-        // PATCH 의미: null이면 유지 / 값 있으면 변경
         project.update(
                 requestDto.title(),
                 requestDto.description(),
@@ -97,7 +95,7 @@ public class ProjectService {
 
 
     @Transactional
-    public void deleteProject(String ownerId, String projectId) {
+    public void deleteProject(UUID ownerId, UUID projectId) {
         Project project = projectRepository.findById(projectId).orElseThrow(() -> new IllegalArgumentException("ID에 해당하는 게시글을 찾을 수 없습니다: "+ projectId));
 
         if (!ownerId.equals(project.getOwnerId())) {

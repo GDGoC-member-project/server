@@ -1,13 +1,13 @@
-package com.gdgoc.member.dto;
+package com.gdgoc.member.projectdto;
 
 import com.gdgoc.member.domain.Project;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 public record ProjectSummaryResponse(
-        String projectId,
+        UUID projectId,
         String title,
         String description,
         List<RrecruitmentSummaryResponse> recruitments,

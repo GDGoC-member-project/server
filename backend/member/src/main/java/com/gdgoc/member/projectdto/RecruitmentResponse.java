@@ -1,4 +1,4 @@
-package com.gdgoc.member.dto;
+package com.gdgoc.member.projectdto;
 
 import com.gdgoc.member.domain.Recruitment;
 

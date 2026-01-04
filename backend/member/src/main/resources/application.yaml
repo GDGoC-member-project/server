@@ -19,13 +19,13 @@ spring:
     password: js11020353
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-    jpa:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
       hibernate:
-        ddl-auto: update
-      properties:
-        hibernate:
-          format_sql: true
-          show_sql: true
+        format_sql: true
 
 server:
   port: 8080
