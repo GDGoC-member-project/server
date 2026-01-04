@@ -117,6 +117,15 @@ public class ProfileService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ProfileResponse getByUserId(String userId) {
+        Profile profile = profileRepository.findByUserId(userId)
+            .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND));
+
+        return toProfileResponse(profile);
+    }
+
+
     private ProfileSummaryResponse toSummaryResponse(Profile p) {
         return new ProfileSummaryResponse(
             p.getUserId(),

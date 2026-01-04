@@ -58,4 +58,10 @@ public class ProfileController {
     public BaseResponse<List<ProfileSummaryResponse>> search(@RequestParam String keyword) {
         return BaseResponse.success(profileService.search(keyword));
     }
+
+    @GetMapping("/{userId}")
+    public BaseResponse<ProfileResponse> getProfileDetail(@PathVariable String userId) {
+        return BaseResponse.success(profileService.getByUserId(userId));
+    }
+
 }
