@@ -1,7 +1,7 @@
 package com.gdgoc.member.service;
 
-import com.gdgoc.member.domain.Project;
-import com.gdgoc.member.domain.Recruitment;
+import com.gdgoc.member.domain.project.Project;
+import com.gdgoc.member.domain.project.Recruitment;
 import com.gdgoc.member.projectdto.*;
 import com.gdgoc.member.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,5 +1,6 @@
-package com.gdgoc.member.domain;
+package com.gdgoc.member.domain.project;
 
+import com.gdgoc.member.domain.project.Recruitment;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

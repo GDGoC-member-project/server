@@ -1,6 +1,6 @@
 package com.gdgoc.member.projectdto;
 
-import com.gdgoc.member.domain.Project;
+import com.gdgoc.member.domain.project.Project;
 
 import java.time.LocalDate;
 import java.util.List;

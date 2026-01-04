@@ -1,4 +1,4 @@
-package com.gdgoc.member.domain;
+package com.gdgoc.member.domain.project;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

@@ -1,6 +1,6 @@
 package com.gdgoc.member.projectdto;
 
-import com.gdgoc.member.domain.Recruitment;
+import com.gdgoc.member.domain.project.Recruitment;
 
 public record RecruitmentResponse(
     String position,

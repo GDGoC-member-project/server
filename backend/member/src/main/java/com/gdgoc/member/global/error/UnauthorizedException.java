@@ -1,4 +1,4 @@
-package com.gdgoc.member.error;
+package com.gdgoc.member.global.error;
 
 public class UnauthorizedException extends RuntimeException {
 
