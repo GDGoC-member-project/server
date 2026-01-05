@@ -25,13 +25,44 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // JPA
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // Validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Security + OAuth2 Client
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+    // Swagger / OpenAPI (springdoc) - 버전 통일 (최신 쪽으로)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.15'
+
+    // AWS S3 (필요한 팀원 포함)
+    implementation 'software.amazon.awssdk:s3:2.25.65'
+    implementation 'software.amazon.awssdk:auth:2.25.65'
+
+    // Dotenv - .env 파일 로드 지원
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+    // MySQL Driver - 버전 통일 (명시)
+    runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
+
+    // Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Devtools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
 
 tasks.named('test') {
 	useJUnitPlatform()
