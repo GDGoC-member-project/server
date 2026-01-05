@@ -3,7 +3,6 @@ package com.gdgoc.member.security;
 import com.gdgoc.member.account.AccountService;
 import com.gdgoc.member.account.UserAuth;
 import com.gdgoc.member.global.error.UnauthorizedException;
-import com.gdgoc.member.global.error.UnauthorizedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;

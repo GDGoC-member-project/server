@@ -45,6 +45,9 @@ dependencies {
     implementation 'software.amazon.awssdk:s3:2.25.65'
     implementation 'software.amazon.awssdk:auth:2.25.65'
 
+    // Dotenv - .env 파일 로드 지원
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
     // MySQL Driver - 버전 통일 (명시)
     runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'
 

@@ -1,6 +1,7 @@
 package com.gdgoc.member.global.error;
 
 import com.gdgoc.member.global.response.BaseResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -75,7 +76,30 @@ public class GlobalExceptionHandler {
     }
 
     /* =========================
-     * 4) 그 외: 500
+     * 4) 데이터베이스 제약조건 위반 예외: 400
+     * ========================= */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<BaseResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        String message = e.getMessage();
+        if (message != null && message.contains("Duplicate entry")) {
+            // 중복 키 오류인 경우
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(BaseResponse.error(ErrorResponse.of(
+                            ErrorCode.DUPLICATE_USER_ID.code(),
+                            ErrorCode.DUPLICATE_USER_ID.message()
+                    )));
+        }
+        
+        // 기타 제약조건 위반
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(BaseResponse.error(ErrorResponse.of(
+                        ErrorCode.INVALID_REQUEST.code(),
+                        "데이터베이스 제약조건 위반: " + e.getMessage()
+                )));
+    }
+
+    /* =========================
+     * 5) 그 외: 500
      * ========================= */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<Void>> handleAll(Exception e) {

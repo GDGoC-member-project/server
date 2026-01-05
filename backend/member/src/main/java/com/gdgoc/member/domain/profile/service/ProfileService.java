@@ -38,9 +38,15 @@ public class ProfileService {
         CurrentUser user = currentUserService.requireUser();
         
         UUID userId = user.userId();
+        
+        // 디버깅: 저장하는 userId 로그 출력
+        System.out.println("DEBUG: 저장하는 userId = " + userId);
 
-        if (profileRepository.existsByUserId(userId)) {
-            throw new ApiException(ErrorCode.DUPLICATE_USER_ID);
+        // 이미 존재하면 조회해서 반환 (getOrCreate 패턴)
+        Profile existingProfile = profileRepository.findByUserId(userId).orElse(null);
+        if (existingProfile != null) {
+            System.out.println("DEBUG: 기존 프로필 발견. userId = " + userId);
+            return toProfileResponse(existingProfile);
         }
 
         String techStacksJson = toJson(req.getTechStacks());
@@ -60,16 +66,35 @@ public class ProfileService {
             socialLinksJson
         );
 
-        Profile saved = profileRepository.save(profile);
-        return toProfileResponse(saved);
+        try {
+            Profile saved = profileRepository.save(profile);
+            System.out.println("DEBUG: 프로필 저장 성공. userId = " + saved.getUserId());
+            return toProfileResponse(saved);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // 동시성 문제로 인한 중복 저장 시도 시, 기존 프로필 조회
+            System.out.println("DEBUG: 중복 저장 시도. 기존 프로필 조회. userId = " + userId);
+            Profile savedProfile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ApiException(ErrorCode.DUPLICATE_USER_ID));
+            System.out.println("DEBUG: 기존 프로필 조회 성공. userId = " + savedProfile.getUserId());
+            return toProfileResponse(savedProfile);
+        }
     }
 
     @Transactional(readOnly = true)
     public ProfileResponse get() {
-        UUID userId = currentUserService.requireUser().userId();
+        CurrentUser user = currentUserService.requireUser();
+        UUID userId = user.userId();
 
+        // 디버깅: 조회하는 userId 로그 출력
+        System.out.println("DEBUG: 조회하는 userId = " + userId);
+        
         Profile profile = profileRepository.findByUserId(userId)
-            .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND));
+            .orElseThrow(() -> {
+                // 디버깅: 프로필이 없을 때 모든 프로필의 userId 확인
+                System.out.println("DEBUG: 프로필을 찾을 수 없음. userId = " + userId);
+                System.out.println("DEBUG: 전체 프로필 수 = " + profileRepository.count());
+                return new ApiException(ErrorCode.PROFILE_NOT_FOUND);
+            });
 
         return toProfileResponse(profile);
     }
