@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/projects/**").authenticated()
 
                         .requestMatchers("/api/v1/me/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/profiles/upload_image").authenticated()
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth2 -> oauth2

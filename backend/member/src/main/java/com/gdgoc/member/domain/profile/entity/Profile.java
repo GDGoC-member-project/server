@@ -56,6 +56,9 @@ public class Profile {
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
+    @Column(name = "profile_image_size")
+    private Long profileImageSize;
+
     @Column(name = "tech_stacks", columnDefinition = "json")
     private String techStacksJson;
 
@@ -74,7 +77,7 @@ public class Profile {
 
     public Profile(UUID userId, String name, Integer generation, Part part, Role role,
                    String department, String bio, String mbtiInfo, String profileImageUrl,
-                   String techStacksJson, String socialLinksJson) {
+                   Long profileImageSize, String techStacksJson, String socialLinksJson) {
         this.userId = userId;
         this.name = name;
         this.generation = generation;
@@ -84,6 +87,7 @@ public class Profile {
         this.bio = bio;
         this.mbtiInfo = mbtiInfo;
         this.profileImageUrl = profileImageUrl;
+        this.profileImageSize = profileImageSize;
         this.techStacksJson = techStacksJson;
         this.socialLinksJson = socialLinksJson;
     }
@@ -103,6 +107,11 @@ public class Profile {
         this.socialLinksJson = socialLinksJson;
     }
 
+    public void updateProfileImage(String profileImageUrl, Long profileImageSize) {
+        this.profileImageUrl = profileImageUrl;
+        this.profileImageSize = profileImageSize;
+    }
+
     public Long getId() { return id; }
     public UUID getUserId() { return userId; }
     public String getName() { return name; }
@@ -113,6 +122,7 @@ public class Profile {
     public String getBio() { return bio; }
     public String getMbtiInfo() { return mbtiInfo; }
     public String getProfileImageUrl() { return profileImageUrl; }
+    public Long getProfileImageSize() { return profileImageSize; }
     public String getTechStacksJson() { return techStacksJson; }
     public String getSocialLinksJson() { return socialLinksJson; }
     public LocalDateTime getCreatedAt() { return createdAt; }

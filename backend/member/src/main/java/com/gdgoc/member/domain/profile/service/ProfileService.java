@@ -3,6 +3,7 @@ package com.gdgoc.member.domain.profile.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gdgoc.member.domain.profile.dto.request.ProfileRequest;
+import com.gdgoc.member.domain.profile.dto.response.ProfileImageUploadResponse;
 import com.gdgoc.member.domain.profile.dto.response.ProfileResponse;
 import com.gdgoc.member.domain.profile.dto.response.ProfileSummaryResponse;
 import com.gdgoc.member.domain.profile.entity.Profile;
@@ -15,7 +16,9 @@ import com.gdgoc.member.global.error.ApiException;
 import com.gdgoc.member.global.error.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -26,11 +29,13 @@ public class ProfileService {
 
     private final ProfileRepository profileRepository;
     private final CurrentUserService currentUserService;
+    private final S3UploadService s3UploadService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ProfileService(ProfileRepository profileRepository, CurrentUserService currentUserService) {
+    public ProfileService(ProfileRepository profileRepository, CurrentUserService currentUserService, S3UploadService s3UploadService) {
         this.profileRepository = profileRepository;
         this.currentUserService = currentUserService;
+        this.s3UploadService = s3UploadService;
     }
 
     @Transactional
@@ -62,6 +67,7 @@ public class ProfileService {
             req.getBio(),
             req.getMbtiInfo(),
             req.getProfileImageUrl(),
+            null, // profileImageSize - 이미지 업로드 시 별도로 설정
             techStacksJson,
             socialLinksJson
         );
@@ -196,6 +202,58 @@ public class ProfileService {
             return objectMapper.readValue(json, typeRef);
         } catch (Exception e) {
             return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 프로필 이미지를 업로드하고 DB에 저장합니다.
+     *
+     * @param file 업로드할 이미지 파일
+     * @return 업로드된 이미지 정보
+     */
+    @Transactional
+    public ProfileImageUploadResponse uploadProfileImage(MultipartFile file) {
+        CurrentUser user = currentUserService.requireUser();
+        UUID userId = user.userId();
+
+        // 파일 유효성 검사
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "이미지 파일이 필요합니다.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "이미지 파일만 업로드 가능합니다.");
+        }
+
+        // 파일 크기 제한 (10MB)
+        long maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.getSize() > maxSize) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "파일 크기는 10MB를 초과할 수 없습니다.");
+        }
+
+        try {
+            // S3에 업로드
+            String imageUrl = s3UploadService.uploadProfileImage(file, userId);
+            long fileSize = file.getSize();
+            String fileName = file.getOriginalFilename();
+
+            // 프로필 조회 또는 생성
+            Profile profile = profileRepository.findByUserId(userId)
+                    .orElseThrow(() -> new ApiException(ErrorCode.PROFILE_NOT_FOUND, "프로필을 먼저 생성해주세요."));
+
+            // 기존 이미지가 있으면 S3에서 삭제
+            if (profile.getProfileImageUrl() != null && !profile.getProfileImageUrl().isEmpty()) {
+                s3UploadService.deleteProfileImage(profile.getProfileImageUrl());
+            }
+
+            // 프로필 이미지 정보 업데이트
+            profile.updateProfileImage(imageUrl, fileSize);
+            profileRepository.save(profile);
+
+            return new ProfileImageUploadResponse(userId, imageUrl, fileSize, fileName);
+        } catch (IOException e) {
+            throw new ApiException(ErrorCode.SERVER_ERROR, "이미지 업로드 중 오류가 발생했습니다: " + e.getMessage());
         }
     }
 }
