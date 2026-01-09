@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -29,16 +30,28 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-        UserAuth userAuth = userAuthRepository.findByExternalUid(oidcUser.getSubject()).orElseGet(() -> {
-            UserAuth newUser = new UserAuth(
-                    UUID.randomUUID(),
-                    oidcUser.getSubject(),
-                    oidcUser.getEmail(),
-                    null,
-                    Role.MEMBER
-            );
-            return userAuthRepository.save(newUser);
-        });
+
+        Optional<UserAuth> userAuthOptional = userAuthRepository.findByExternalUid(oidcUser.getSubject());
+        UserAuth userAuth;
+
+        if (userAuthOptional.isPresent()) {
+            userAuth = userAuthOptional.get();
+        } else {
+            Optional<UserAuth> userAuthByEmailOptional = userAuthRepository.findByEmail(oidcUser.getEmail());
+            if (userAuthByEmailOptional.isPresent()) {
+                userAuth = userAuthByEmailOptional.get();
+                userAuthRepository.save(new UserAuth(userAuth.getUserId(), oidcUser.getSubject(), userAuth.getEmail(), userAuth.getPasswordHash(), userAuth.getRole()));
+            } else {
+                UserAuth newUser = new UserAuth(
+                        UUID.randomUUID(),
+                        oidcUser.getSubject(),
+                        oidcUser.getEmail(),
+                        null,
+                        Role.MEMBER
+                );
+                userAuth = userAuthRepository.save(newUser);
+            }
+        }
 
         ClassPathResource resource = new ClassPathResource("static/oauth_success.html");
         Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
