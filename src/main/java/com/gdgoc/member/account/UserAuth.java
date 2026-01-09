@@ -50,6 +50,7 @@ public class UserAuth {
     public String getPasswordHash() { return passwordHash; }
     public Role getRole() { return role; }
 
+    public void setExternalUid(String externalUid) { this.externalUid = externalUid; }
     public void setEmail(String email) { this.email = email; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public void setRole(Role role) { this.role = role; }

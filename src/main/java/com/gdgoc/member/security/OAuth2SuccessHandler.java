@@ -40,7 +40,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             Optional<UserAuth> userAuthByEmailOptional = userAuthRepository.findByEmail(oidcUser.getEmail());
             if (userAuthByEmailOptional.isPresent()) {
                 userAuth = userAuthByEmailOptional.get();
-                userAuthRepository.save(new UserAuth(userAuth.getUserId(), oidcUser.getSubject(), userAuth.getEmail(), userAuth.getPasswordHash(), userAuth.getRole()));
+                userAuth.setExternalUid(oidcUser.getSubject());
+                userAuthRepository.save(userAuth);
             } else {
                 UserAuth newUser = new UserAuth(
                         UUID.randomUUID(),
