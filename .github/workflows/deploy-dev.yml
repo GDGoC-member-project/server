@@ -63,6 +63,6 @@ jobs:
       - name: Health check (Swagger)
         run: |
           # HTTPS가 아니면 http:// 로 바꾸기
-          curl -fsS "https://${{ secrets.EC2_HOST }}/swagger-ui/index.html" > /dev/null
+          curl -fsS "https://${{ secrets.EC2_HOST }}/actuator/health" > /dev/null
           echo "Health check OK"
 
