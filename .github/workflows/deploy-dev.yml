@@ -60,9 +60,21 @@ jobs:
           ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
             "sudo systemctl restart member && sudo systemctl status member --no-pager -l"
 
-      - name: Health check (Swagger)
+      - name: Health check (/ with retry)
         run: |
-          # HTTPS가 아니면 http:// 로 바꾸기
-          curl -fsS "https://${{ secrets.EC2_HOST }}/" > /dev/null
-          echo "Health check OK"
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ secrets.EC2_HOST }}/" || true)
+            echo "Attempt $i: HTTP $code"
+
+            # 200 OK / 301-302 Redirect면 "살아있다"로 간주
+            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+              echo "Health check OK"
+              exit 0
+            fi
+
+            sleep 4
+          done
+
+          echo "Health check FAILED"
+          exit 1
 
