@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <title>로그인 성공</title>
+    </head>
+    <body>
+        <script>
+            const allowedOrigins = [
+                "http://localhost:5173",
+                "http://localhost:4173",
+                "https://gdgoc-seoultech.vercel.app/",
+            ];
+
+            const message = {
+                type: "oauth_success",
+                payload: {
+                    userId: "[[${userId}]]",
+                    externalUid: "[[${externalUid}]]",
+                    email: "[[${email}]]",
+                    role: "[[${role}]]",
+                },
+            };
+
+            if (window.opener) {
+                allowedOrigins.forEach((origin) => {
+                    window.opener.postMessage(message, origin);
+                });
+            }
+
+            window.close();
+        </script>
+    </body>
+</html>
