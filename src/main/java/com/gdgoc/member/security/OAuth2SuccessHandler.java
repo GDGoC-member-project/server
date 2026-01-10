@@ -3,6 +3,8 @@ package com.gdgoc.member.security;
 import com.gdgoc.member.account.Role;
 import com.gdgoc.member.account.UserAuth;
 import com.gdgoc.member.account.UserAuthRepository;
+import com.gdgoc.member.domain.profile.entity.Profile;
+import com.gdgoc.member.domain.profile.repository.ProfileRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,6 +28,7 @@ import java.util.Optional;
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserAuthRepository userAuthRepository;
+    private final ProfileRepository profileRepository;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -53,6 +56,25 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 userAuth = userAuthRepository.save(newUser);
             }
         }
+
+        profileRepository.findByUserId(userAuth.getUserId()).or(() -> {
+            Profile newProfile = new Profile(
+                    userAuth.getUserId(),
+                    oidcUser.getEmail(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+            profileRepository.save(newProfile);
+            return Optional.of(newProfile);
+        });
 
         ClassPathResource resource = new ClassPathResource("static/oauth_success.html");
         Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
